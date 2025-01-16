@@ -26,3 +26,17 @@ resources:
     type: oci-image
     description: OCI image for iperf3
     upstream-source: ghcr.io/gruyaume/iperf3:3.17.1
+
+parts:
+  charm:
+    source: .
+    plugin: charm
+    charm-requirements:
+      - requirements.txt
+    build-snaps:
+      - astral-uv
+      - rustup
+    override-build: |
+      rustup default stable
+      uv export --frozen --no-dev -o requirements.txt
+      craftctl default
