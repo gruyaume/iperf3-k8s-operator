@@ -6,7 +6,7 @@ requires-python = ">=3.10"
 dependencies = [
     "jsonschema",
     "ops",
-    "pydantic==2.10.4",
+    "pydantic==2.10.5",
     "pyhcl",
     "requests",
 ]
