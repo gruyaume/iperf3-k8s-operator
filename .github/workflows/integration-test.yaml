@@ -1,0 +1,62 @@
+name: Integration tests
+
+on:
+  workflow_call:
+    inputs:
+      branch-name:
+        description: Name of the branch to checkout
+        required: false
+        type: string
+        default: ${{ github.ref }}
+
+jobs:
+  integration-test:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch-name }}
+
+      - name: Fetch Charm Under Test
+        uses: actions/download-artifact@v4
+        with:
+          name: built-charm
+          path: built/
+
+      - name: Get Charm Under Test Path
+        id: charm-path
+        run: echo "charm_path=$(find built/ -name '*.charm' -type f -print)" >> $GITHUB_OUTPUT
+
+      - name: Setup operator environment
+        uses: charmed-kubernetes/actions-operator@main
+        with:
+          juju-channel: 3.6/stable
+          provider: microk8s
+          channel: 1.31-strict/stable
+          lxd-channel: 5.21/stable
+  
+      - name: Install UV and Tox
+        run: |
+          pipx uninstall tox
+          sudo snap install astral-uv --classic
+          uv tool install tox --with tox-uv --force
+
+      - name: Run integration tests
+        run: |
+          tox -e integration -- \
+            --charm_path="${{ steps.charm-path.outputs.charm_path }}" \
+
+      - name: Archive charmcraft logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: charmcraft-logs
+          path: /home/runner/.local/state/charmcraft/log/*.log
+  
+      - name: Archive juju crashdump
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: juju-crashdump
+          path: juju-crashdump-*.tar.xz
