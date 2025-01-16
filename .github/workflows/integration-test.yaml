@@ -32,47 +32,18 @@ jobs:
         run: echo "charm_path=$(find built/ -name '*.charm' -type f -print)" >> $GITHUB_OUTPUT
 
       - name: Setup operator environment
+        uses: charmed-kubernetes/actions-operator@main
+        with:
+          juju-channel: 3.6/stable
+          provider: microk8s
+          channel: 1.31-strict/stable
+          lxd-channel: 5.21/stable
+  
+      - name: Install UV and Tox
         run: |
-          # Install concierge
-          sudo snap install concierge --classic
-
-          # Prepare k8s
-          sudo concierge prepare -p k8s --k8s-channel=1.30-classic/beta --lxd-channel "5.21/stable" --extra-debs tox
-
-          # Bootstrap k8s
-          sudo k8s disable gateway
-          sudo k8s disable load-balancer
-          sudo k8s disable network
-
-          # Copy kubeconfig to user home
-          mkdir -p ~/.kube
-          sudo k8s kubectl config view --raw > ~/.kube/config
-
-          # Install Cilium CLI
-          CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
-          CLI_ARCH=amd64
-          if [ "$(uname -m)" = "aarch64" ]; then CLI_ARCH=arm64; fi
-          curl -L --fail --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
-          sha256sum --check cilium-linux-${CLI_ARCH}.tar.gz.sha256sum
-          sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
-          rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
-
-          # Set CNI to non-exclusive mode (required for Multus)
-          cilium config set cni-exclusive false
-
-          # Install Multus
-          kubectl apply -f https://raw.githubusercontent.com/k8snetworkplumbingwg/multus-cni/master/deployments/multus-daemonset-thick.yml
-
-          # Create an ip pool for load balancer
-          kubectl apply -f - <<EOF
-          apiVersion: "cilium.io/v2alpha1"
-          kind: CiliumLoadBalancerIPPool
-          metadata:
-            name: "demo-pool"
-          spec:
-            blocks:
-            - cidr: "10.0.10.0/24"
-          EOF
+          pipx uninstall tox
+          sudo snap install astral-uv --classic
+          uv tool install tox --with tox-uv --force
 
       - name: Run integration tests
         run: |
