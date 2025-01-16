@@ -1,0 +1,94 @@
+name: Integration tests
+
+on:
+  workflow_call:
+    secrets:
+      GHCR_TOKEN:
+        required: true
+    inputs:
+      branch-name:
+        description: Name of the branch to checkout
+        required: false
+        type: string
+        default: ${{ github.ref }}
+
+jobs:
+  integration-test:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch-name }}
+
+      - name: Fetch Charm Under Test
+        uses: actions/download-artifact@v4
+        with:
+          name: built-charm
+          path: built/
+
+      - name: Get Charm Under Test Path
+        id: charm-path
+        run: echo "charm_path=$(find built/ -name '*.charm' -type f -print)" >> $GITHUB_OUTPUT
+
+      - name: Setup operator environment
+        run: |
+          # Install concierge
+          sudo snap install concierge --classic
+
+          # Prepare k8s
+          sudo concierge prepare -p k8s --k8s-channel=1.30-classic/beta --lxd-channel "5.21/stable" --extra-debs tox
+
+          # Bootstrap k8s
+          sudo k8s disable gateway
+          sudo k8s disable load-balancer
+          sudo k8s disable network
+
+          # Copy kubeconfig to user home
+          mkdir -p ~/.kube
+          sudo k8s kubectl config view --raw > ~/.kube/config
+
+          # Install Cilium CLI
+          CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
+          CLI_ARCH=amd64
+          if [ "$(uname -m)" = "aarch64" ]; then CLI_ARCH=arm64; fi
+          curl -L --fail --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+          sha256sum --check cilium-linux-${CLI_ARCH}.tar.gz.sha256sum
+          sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
+          rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+
+          # Set CNI to non-exclusive mode (required for Multus)
+          cilium config set cni-exclusive false
+
+          # Install Multus
+          kubectl apply -f https://raw.githubusercontent.com/k8snetworkplumbingwg/multus-cni/master/deployments/multus-daemonset-thick.yml
+
+          # Create an ip pool for load balancer
+          kubectl apply -f - <<EOF
+          apiVersion: "cilium.io/v2alpha1"
+          kind: CiliumLoadBalancerIPPool
+          metadata:
+            name: "demo-pool"
+          spec:
+            blocks:
+            - cidr: "10.0.10.0/24"
+          EOF
+
+      - name: Run integration tests
+        run: |
+          tox -e integration -- \
+            --charm_path="${{ steps.charm-path.outputs.charm_path }}" \
+
+      - name: Archive charmcraft logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: charmcraft-logs
+          path: /home/runner/.local/state/charmcraft/log/*.log
+  
+      - name: Archive juju crashdump
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: juju-crashdump
+          path: juju-crashdump-*.tar.xz
