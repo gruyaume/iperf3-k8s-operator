@@ -10,8 +10,13 @@ from charm import Iperf3K8SOperatorCharm
 
 
 class Iperf3UnitTestFixtures:
+    patcher_k8s_multus = patch(
+        "charm.KubernetesMultusCharmLib",
+    )
+
     @pytest.fixture(autouse=True)
     def setup(self, request):  # type: ignore[reportMissingParameterType]
+        self.mock_k8s_multus = Iperf3UnitTestFixtures.patcher_k8s_multus.start().return_value
         yield
         request.addfinalizer(self.teardown)
 
