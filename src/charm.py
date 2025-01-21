@@ -25,7 +25,6 @@ CORE_INTERFACE_BRIDGE_NAME = "core-br"
 CNI_VERSION = "0.3.1"
 CORE_IP_ADDRESS = "192.168.250.22"
 UE_SUBNET = "172.250.0.0/16"
-UPF_CORE_IP_ADDRESS = "192.168.250.3"
 
 
 class Iperf3K8SOperatorCharm(ops.CharmBase):
@@ -74,6 +73,8 @@ class Iperf3K8SOperatorCharm(ops.CharmBase):
         if not self._container.can_connect():
             return
         self._kubernetes_multus.configure()
+        if not self._kubernetes_multus.is_ready():
+            return
         plan = self._container.get_plan()
         if plan.services != self._pebble_layer.services:
             self._container.add_layer(self._service_name, self._pebble_layer, combine=True)
