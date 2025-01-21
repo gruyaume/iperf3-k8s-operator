@@ -23,6 +23,9 @@ CORE_GW_NAD_NAME = "core-iperf3"
 CORE_INTERFACE_NAME = "core"
 CORE_INTERFACE_BRIDGE_NAME = "core-br"
 CNI_VERSION = "0.3.1"
+CORE_IP_ADDRESS = "192.168.250.22"
+UE_SUBNET = "172.250.0.0/16"
+UPF_CORE_IP_ADDRESS = "192.168.250.3"
 
 
 class Iperf3K8SOperatorCharm(ops.CharmBase):
@@ -125,7 +128,7 @@ class Iperf3K8SOperatorCharm(ops.CharmBase):
                 "type": "static",
                 "addresses": [
                     {
-                        "address": "192.168.250.22/24",
+                        "address": f"{CORE_IP_ADDRESS}/24",
                     }
                 ],
             },
@@ -145,7 +148,7 @@ class Iperf3K8SOperatorCharm(ops.CharmBase):
                     "iperf3": {
                         "override": "replace",
                         "summary": "iperf3",
-                        "command": f"iperf3 -s -p {IPERF3_PORT}",
+                        "command": f"iperf3 -s --bind {CORE_IP_ADDRESS} -p {IPERF3_PORT}",
                         "startup": "enabled",
                     }
                 },
