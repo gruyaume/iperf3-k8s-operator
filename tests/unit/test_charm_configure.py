@@ -34,7 +34,7 @@ class TestCharmConfigure(Iperf3UnitTestFixtures):
                         "summary": "iperf3",
                         "startup": "enabled",
                         "override": "replace",
-                        "command": "iperf3 -s -p 5201",
+                        "command": "iperf3 -s --bind 192.168.250.22 -p 5201",
                     }
                 },
             }
