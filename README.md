@@ -11,3 +11,5 @@ iperf3-k8s is a Juju charm for operating iPerf3 in Kubernetes.
 ```shell
 juju deploy iperf3-k8s
 ```
+
+The charm will use Multus to create a network attachment definition on the "core-br" bridge. The iPerf3 server will listen on this address, on port 5201.

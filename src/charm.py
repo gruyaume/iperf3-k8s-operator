@@ -6,7 +6,7 @@
 
 import json
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
 import ops
 from charms.kubernetes_charm_libraries.v0.multus import (
@@ -23,8 +23,6 @@ CORE_GW_NAD_NAME = "core-iperf3"
 CORE_INTERFACE_NAME = "core"
 CORE_INTERFACE_BRIDGE_NAME = "core-br"
 CNI_VERSION = "0.3.1"
-CORE_IP_ADDRESS = "192.168.250.22"
-UE_SUBNET = "172.250.0.0/16"
 
 
 class Iperf3K8SOperatorCharm(ops.CharmBase):
@@ -115,6 +113,9 @@ class Iperf3K8SOperatorCharm(ops.CharmBase):
             ),
         ]
 
+    def _get_bind_address(self) -> str:
+        return cast(str, self.model.config.get("bind-ip-address"))
+
     def _get_core_nad_config(self) -> Dict[Any, Any]:
         """Get core interface NAD config.
 
@@ -129,7 +130,7 @@ class Iperf3K8SOperatorCharm(ops.CharmBase):
                 "type": "static",
                 "addresses": [
                     {
-                        "address": f"{CORE_IP_ADDRESS}/24",
+                        "address": self._get_bind_address(),
                     }
                 ],
             },
@@ -141,6 +142,7 @@ class Iperf3K8SOperatorCharm(ops.CharmBase):
     @property
     def _pebble_layer(self) -> ops.pebble.Layer:
         """Return the Pebble layer definition."""
+        core_ip_address = self._get_bind_address().split("/")[0]
         return ops.pebble.Layer(
             {
                 "summary": "iperf3 layer",
@@ -149,7 +151,7 @@ class Iperf3K8SOperatorCharm(ops.CharmBase):
                     "iperf3": {
                         "override": "replace",
                         "summary": "iperf3",
-                        "command": f"iperf3 -s --bind {CORE_IP_ADDRESS} -p {IPERF3_PORT}",
+                        "command": f"iperf3 -s --bind {core_ip_address} -p {IPERF3_PORT}",
                         "startup": "enabled",
                     }
                 },

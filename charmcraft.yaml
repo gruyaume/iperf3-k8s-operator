@@ -40,3 +40,11 @@ parts:
       rustup default stable
       uv export --frozen --no-dev -o requirements.txt
       craftctl default
+
+
+config:
+  options:
+    bind-ip-address:
+      type: string
+      default: 192.168.250.22/24
+      description: The IP address to bind to. A Network Attachment Definition with this IP address will be created.
