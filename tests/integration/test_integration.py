@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2023 Canonical Ltd.
+# Copyright 2023 Guillaume Belanger.
 # See LICENSE file for licensing details.
 
 
