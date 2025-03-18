@@ -9,13 +9,10 @@ description: |
   The iperf3 Kubernetes charm provides a simple way to operate iperf3 
   on Kubernetes.
 
-bases:
-  - build-on:
-    - name: ubuntu
-      channel: "22.04"
-    run-on:
-    - name: ubuntu
-      channel: "22.04"
+base: ubuntu@24.04
+build-base: ubuntu@24.04
+platforms:
+  amd64:
 
 containers:
   iperf3:
